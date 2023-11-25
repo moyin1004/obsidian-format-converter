@@ -1,0 +1,11 @@
+{
+	"id": "Format Converter",
+	"name": "Format Converter",
+	"version": "1.0.0",
+	"minAppVersion": "0.15.0",
+	"description": "Format Converter From Other Markdown Syntax",
+	"author": "Moyin",
+	"authorUrl": "https://moyinfire.cn",
+	"fundingUrl": "https://moyinfire.cn",
+	"isDesktopOnly": false
+}
