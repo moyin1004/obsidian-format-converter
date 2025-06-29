@@ -37,8 +37,7 @@ jobs:
             # 为发布准备文件
             mkdir ${{ env.PLUGIN_NAME }}
             # 从实际构建输出目录复制文件
-            cp ./styles.css ${{ env.OUTPUT_DIR }}/
-            cp ${{ env.OUTPUT_DIR }}/main.js ${{ env.OUTPUT_DIR }}/styles.css ./manifest.json ${{ env.PLUGIN_NAME }}/
+            cp ./main.js ./styles.css ./manifest.json ${{ env.PLUGIN_NAME }}/
             zip -r ${{ env.PLUGIN_NAME }}.zip ${{ env.PLUGIN_NAME }}
             ls
 
@@ -54,7 +53,7 @@ jobs:
             prerelease: false
             files: |
               ${{ env.PLUGIN_NAME }}.zip
-              ${{ env.OUTPUT_DIR }}/main.js
+              ${{ env.PLUGIN_NAME }}/main.js
               ./manifest.json
-              ${{ env.OUTPUT_DIR }}/styles.css
+              ${{ env.PLUGIN_NAME }}/styles.css
             token: ${{ secrets.GITHUB_TOKEN }}
