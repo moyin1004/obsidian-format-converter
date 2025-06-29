@@ -49,6 +49,7 @@ jobs:
             tag_name: ${{ steps.get_version.outputs.version }}
             name: Release ${{ steps.get_version.outputs.version }}
             # body: ${{ steps.changelog.outputs.changelog }}
+            body: "Created by GitHub Actions!"
             draft: false
             prerelease: false
             files: |
