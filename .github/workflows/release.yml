@@ -7,81 +7,54 @@ on:
 
 env:
   PLUGIN_NAME: format-converter # Change this to match the id of your plugin.
+  OUTPUT_DIR: ./build
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Use Node.js
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v3
         with:
-          node-version: "16.x"
+          node-version: 16
+      
+      - name: Get tag version
+        id: get_version
+        # 提取纯标签名称，去掉 refs/tags/ 前缀
+        run: |
+            TAG_NAME=${GITHUB_REF#refs/tags/}
+            echo "version=$TAG_NAME" >> $GITHUB_OUTPUT
+            echo "Tag version: $TAG_NAME"
 
       - name: Build
         id: build
         run: |
-          npm install
-          npm run build
-          mkdir ${{ env.PLUGIN_NAME }}
-          cp -r main.js manifest.json styles.css ${{ env.PLUGIN_NAME }}
-          zip -r ${{ env.PLUGIN_NAME }}.zip ${{ env.PLUGIN_NAME }}
-          ls
-          echo "::set-output name=tag_name::$(git tag --sort version:refname | tail -n 1)"
+            # 使用 --legacy-peer-deps 参数解决依赖冲突
+            npm install --legacy-peer-deps
+            npm run build
+            # 为发布准备文件
+            mkdir ${{ env.PLUGIN_NAME }}
+            # 从实际构建输出目录复制文件
+            cp ./styles.css ${{ env.OUTPUT_DIR }}/
+            cp ${{ env.OUTPUT_DIR }}/main.js ${{ env.OUTPUT_DIR }}/styles.css ./manifest.json ${{ env.PLUGIN_NAME }}/
+            zip -r ${{ env.PLUGIN_NAME }}.zip ${{ env.PLUGIN_NAME }}
+            ls
 
       - name: Create Release
         id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ github.ref }}
+        uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.ref }}
-          release_name: ${{ github.ref }}
-          draft: false
-          prerelease: false
-
-      - name: Upload zip file
-        id: upload-zip
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./${{ env.PLUGIN_NAME }}.zip
-          asset_name: ${{ env.PLUGIN_NAME }}-${{ steps.build.outputs.tag_name }}.zip
-          asset_content_type: application/zip
-
-      - name: Upload main.js
-        id: upload-main
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./main.js
-          asset_name: main.js
-          asset_content_type: text/javascript
-
-      - name: Upload manifest.json
-        id: upload-manifest
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./manifest.json
-          asset_name: manifest.json
-          asset_content_type: application/json
-
-      - name: Upload styles.css
-        id: upload-css
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./styles.css
-          asset_name: styles.css
-          asset_content_type: text/css
+            # 使用纯标签名称，不包含 refs/tags/ 前缀
+            tag_name: ${{ steps.get_version.outputs.version }}
+            name: Release ${{ steps.get_version.outputs.version }}
+            # body: ${{ steps.changelog.outputs.changelog }}
+            draft: false
+            prerelease: false
+            files: |
+              ${{ env.PLUGIN_NAME }}.zip
+              ${{ env.OUTPUT_DIR }}/main.js
+              ./manifest.json
+              ${{ env.OUTPUT_DIR }}/styles.css
+            token: ${{ secrets.GITHUB_TOKEN }}
