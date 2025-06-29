@@ -41,6 +41,81 @@ export default class HelloWorldPlugin extends Plugin {
 			}
 		});
 
+		let handleSingleRow = (line: string) => {
+			let cur = 0;
+			let newline = '';
+			while (cur < line.length) {
+				const startIndex = line.indexOf('$ ', cur);
+				let endIndex = line.indexOf(' $', startIndex+2);
+				if (startIndex == -1 || endIndex == -1) {
+					break
+				}
+				if ((startIndex > 0 && line[startIndex-1] == '$') || (endIndex+2 < line.length && line[endIndex+2] == '$')) {
+					break
+				}
+				// 单行公式包含在一行内
+				endIndex += 2;
+				let preText = line.slice(cur, startIndex);
+				const formulaText = line.slice(startIndex + 2, endIndex - 2);
+				newline += preText + `$${formulaText}$`;
+				cur = endIndex
+			}
+			newline += line.slice(cur)
+			return {newline, cur};
+		}
+
+		var cmd = this.addCommand({
+			id: 'Tran 语雀公式',
+			name: 'Tran 语雀公式',
+			editorCallback: (editor: Editor) => {
+				let doc = editor.getDoc();
+				// let line = handleSingleRow(doc.getValue());
+				// console.log(line);
+				// editor.replaceRange(line, { line: 0, ch: 0 }, { line: doc.lineCount(), ch: 0 });
+                let lines = [];
+                let inMathBlock = false;
+                let mathBlockLines: string[] = [];
+                let preText = ''; // 用于存储 $ 符号前的文本
+
+                // 遍历所有行
+                for (let i = 0; i < doc.lineCount(); i++) {
+                    let line = doc.getLine(i);
+					if (!inMathBlock) {
+						let {newline, cur} = handleSingleRow(line);
+						line = newline;
+						const startIndex = line.indexOf('$ ', cur);
+						if (startIndex != -1 && !(startIndex > 0 && line[startIndex-1] == '$')) {
+							// 公式块开始
+							inMathBlock = true;
+							preText = line.slice(0, startIndex);
+							mathBlockLines.push(line.slice(startIndex + 2));
+						} else {
+							// 普通行
+                        	lines.push(line);
+						}
+					} else {
+						const endIndex = line.indexOf(' $');
+						if (endIndex != -1 && !(endIndex+2 < line.length && line[endIndex+2] == '$')) {
+							// 公式块结束
+							inMathBlock = false;
+							mathBlockLines.push(line.slice(0, endIndex));
+							const mergedFormula = `$${mathBlockLines.join(' ').trim()}$`;
+							lines.push(preText + mergedFormula + handleSingleRow(line.slice(endIndex + 2)).newline);
+							mathBlockLines = [];
+							preText = '';
+						} else {
+							// 公式块中间行
+                        	mathBlockLines.push(line);
+						}
+					}
+                }
+                // 替换文档内容
+                editor.replaceRange(lines.join('\n'), { line: 0, ch: 0 }, { line: doc.lineCount(), ch: 0 });
+
+                return true;
+			}
+		});
+
 		// This creates an icon in the left ribbon.
 		const ribbonIconEl = this.addRibbonIcon('dice', 'Tran Admonitions To Callouts', (evt: MouseEvent) => {
 			// Called when the user clicks the icon.
